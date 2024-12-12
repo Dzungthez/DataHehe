@@ -1,0 +1,10 @@
+streamlit
+fastapi
+uvicorn
+msal
+requests
+python-dotenv
+pandas
+openai
+azure-identity
+azure-mgmt-powerbiembedded
