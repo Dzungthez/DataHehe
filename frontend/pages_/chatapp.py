@@ -2,6 +2,7 @@
 import streamlit as st
 import requests
 import os
+import asyncio
 from state import initialize_state
 
 def save_uploaded_file(uploaded_file):
@@ -14,24 +15,41 @@ def save_uploaded_file(uploaded_file):
         f.write(uploaded_file.getbuffer())
     return file_path
 
+async def send_question(prompt):
+    """
+    Async function gửi câu hỏi đến backend API.
+    """
+    try:
+        response = requests.post(
+            "http://localhost:8000/api/pdf_chat",
+            data={"question": prompt},
+        )
+        if response.status_code == 200:
+            json_response = response.json()
+            return json_response.get("answer", "No answer available."), json_response.get("context", "")
+        else:
+            return f"Error: {response.json().get('detail', 'Unknown error')}", ""
+    except Exception as e:
+        return f"Error: {str(e)}", ""
+
+
 def show_pdf_chat():
     initialize_state()
 
     st.title("Chat with Your PDF")
 
-    # Tạo layout với 4 phần: khoảng trắng bên trái, chat chính, upload file, khoảng trắng bên phải
+    # Bố cục giao diện
     spacer_left, chat_col, files_col, spacer_right = st.columns([0.5, 3, 2, 0.5])
 
+    # Khu vực Chat
     with chat_col:
-        # Chat header
         st.header("Ask AI")
 
-        # Hiển thị lịch sử chat trong container
-        chat_container = st.empty()  # Container rỗng để quản lý lịch sử chat
+        # Hiển thị container chat
+        chat_container = st.empty()
         with chat_container.container():
             for message in st.session_state["messages"]:
                 if message["role"] == "user":
-                    # Hiển thị tin nhắn của người dùng bên phải
                     st.markdown(
                         f"""
                         <div style="text-align: right; margin-bottom: 10px;">
@@ -43,7 +61,6 @@ def show_pdf_chat():
                         unsafe_allow_html=True,
                     )
                 elif message["role"] == "assistant":
-                    # Hiển thị tin nhắn của hệ thống bên trái
                     st.markdown(
                         f"""
                         <div style="text-align: left; margin-bottom: 10px;">
@@ -54,34 +71,43 @@ def show_pdf_chat():
                         """,
                         unsafe_allow_html=True,
                     )
+                    # Hiển thị context dưới dạng dropdown
+                    if "context" in message:
+                        with st.expander("Show Context"):
+                            st.text(message["context"])
 
-        # Thanh nhập liệu (ở cuối giao diện)
-        prompt = st.text_input("Type your question here", key="chat_input")
+        # Input người dùng
+        if "chat_input" not in st.session_state:
+            st.session_state["chat_input"] = ""
+
+        chat_input = st.text_input(
+            "Type your question here",
+            value=st.session_state["chat_input"],
+            key="chat_input_key",
+            placeholder="Press Enter to send...",
+        )
+
         if st.button("Send", key="send_button"):
-            if prompt:
-                # Thêm tin nhắn của người dùng vào session_state
-                st.session_state["messages"].append({"role": "user", "content": prompt})
+            if chat_input:
+                # Thêm câu hỏi của người dùng vào session_state
+                st.session_state["messages"].append({"role": "user", "content": chat_input})
 
-                # Trả lời của hệ thống
-                if st.session_state["uploaded_files"]:
-                    # Gửi yêu cầu đến backend
-                    response = requests.post(
-                        "http://localhost:8000/api/pdf_chat",
-                        files={"file": open(os.path.join("data", st.session_state['uploaded_files'][-1]), "rb")},
-                        data={"question": prompt}
-                    )
-                    if response.status_code == 200:
-                        answer = response.json().get("answer", "No answer available.")
-                    else:
-                        answer = "Error processing the question."
-                else:
-                    answer = "Please upload a PDF file to ask document-specific questions."
+                # Gửi câu hỏi và hiển thị spinner
+                with st.spinner("Waiting for AI response..."):
+                    answer, context = asyncio.run(send_question(chat_input))
 
-                # Thêm tin nhắn của hệ thống vào session_state
-                st.session_state["messages"].append({"role": "assistant", "content": answer})
+                # Lưu câu trả lời và context vào session_state
+                st.session_state["messages"].append({
+                    "role": "assistant",
+                    "content": answer,
+                    "context": context if context else "No context available"
+                })
 
-                # Cập nhật giao diện chat
-                chat_container.empty()  # Làm mới container để hiển thị tin nhắn mới
+                # Xóa input sau khi gửi
+                st.session_state["chat_input"] = ""
+
+                # Làm mới container chat
+                chat_container.empty()
                 with chat_container.container():
                     for message in st.session_state["messages"]:
                         if message["role"] == "user":
@@ -106,20 +132,28 @@ def show_pdf_chat():
                                 """,
                                 unsafe_allow_html=True,
                             )
+                            # Hiển thị context dưới dạng dropdown
+                            if "context" in message:
+                                with st.expander("Show Context"):
+                                    st.text(message["context"])
 
+    # Khu vực tải lên file
     with files_col:
-        # Sidebar upload file
         st.header("Uploaded Files")
         pdf_file = st.file_uploader("Upload PDF", type="pdf")
 
-        if pdf_file and pdf_file.name not in st.session_state["uploaded_files"]:
+        if pdf_file and st.button("Create Collection", key="create_collection_button"):
             file_path = save_uploaded_file(pdf_file)
-            st.session_state["uploaded_files"].append(pdf_file.name)
-            st.success(f"Uploaded successfully: {pdf_file.name}")
+            with open(file_path, "rb") as f:
+                response = requests.post(
+                    "http://localhost:8000/api/create_collection",
+                    files={"file": f},
+                )
+            if response.status_code == 200:
+                st.success("Collection created successfully!")
+            else:
+                st.error(f"Error: {response.json().get('detail', 'Unknown error')}")
 
-        # Hiển thị danh sách file đã tải lên
-        if st.session_state["uploaded_files"]:
-            for file_name in st.session_state["uploaded_files"]:
-                st.write(f"📄 {file_name}")
-        else:
-            st.write("No files uploaded yet.")
+        if st.session_state.get("collection_name"):
+            st.write("Current Collection: Default")
+
