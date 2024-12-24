@@ -19,37 +19,19 @@ def show_powerbi():
         )
 
         if response.status_code == 200:
-            # Nhận thông tin từ backend
-            response_data = response.json()
-            dataset_id = response_data.get("dataset_id")
-            
-            if dataset_id:
-                # Lấy danh sách các bảng từ dataset
-                group_id = "ee1a45b8-f73e-41e2-b8b7-905ac52d4117"
-                api_url = f"https://api.powerbi.com/v1.0/myorg/groups/{group_id}/datasets/{dataset_id}/tables"
-                access_token = response_data.get("access_token")
-                
-                headers = {
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json",
-                }
-                
-                tables_response = requests.get(api_url, headers=headers)
-
-                if tables_response.status_code == 200:
-                    tables_info = tables_response.json()
-                    if tables_info:
-                        st.subheader("Danh sách các bảng:")
-                        for table in tables_info.get("value", []):
-                            st.write(f"Table Name: {table.get('name')}")
-                            st.json(table)
-                            st.write(f"{tables_info}")
-                    else:
-                        st.warning("Không có bảng nào trong dataset.")
-                else:
-                    st.error(f"Không thể lấy thông tin bảng từ Power BI API: {tables_response.text}")
-            else:
-                st.error("Không nhận được `dataset_id` từ backend.")
+            st.markdown(
+                """
+                <iframe 
+                    title="TeamsAttendanceReport" 
+                    width="600" 
+                    height="373.5" 
+                    src="https://app.powerbi.com/view?r=eyJrIjoiMGVjMmMxZGUtOTIzNC00ZWFkLWE3ZjItN2I5OTY2NmFlNTcwIiwidCI6IjVlMTU4ZTJhLTA1OTYtNGE2Yy04ODAxLTM1MDJhZWY0NTYzZiIsImMiOjEwfQ%3D%3D" 
+                    frameborder="0" 
+                    allowFullScreen="true">
+                </iframe>
+                """,
+                unsafe_allow_html=True
+            )
         else:
             st.error(f"Đã xảy ra lỗi trong quá trình xử lý: {response.text}")
 

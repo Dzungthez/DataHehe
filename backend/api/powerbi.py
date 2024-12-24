@@ -101,9 +101,9 @@ async def upload_csv_to_powerbi(file: UploadFile = File(...)):
         # Kiểm tra kết quả từ Power BI
         if response.status_code == 200:
             logger.info("Dữ liệu đã được tải lên Power BI thành công.")
-            # Trả về URL báo cáo Power BI
-            report_url = f"https://app.powerbi.com/groups/{group_id}/reports/{report_id}/ReportSection"
-            return {"powerbi_url": report_url}
+            # # Trả về URL báo cáo Power BI
+            # report_url = f"https://app.powerbi.com/groups/{group_id}/reports/{report_id}/ReportSection"
+            # return {"powerbi_url": report_url}
         else:
             error_message = response.json().get('error', 'Unknown error')
             logger.error(f"Lỗi khi tải lên Power BI: {error_message}")
@@ -117,6 +117,6 @@ async def upload_csv_to_powerbi(file: UploadFile = File(...)):
             os.remove(temp_file_path)
             logger.info(f"Tệp tạm thời {temp_file_path} đã được xóa.")
 
-@app.get("/api/csv_powerbi")
-async def get_csv_powerbi():
-    return {"message": "This endpoint only accepts POST requests for CSV uploads."}
+# @app.get("/api/csv_powerbi")
+# async def get_csv_powerbi():
+#     return {"message": "This endpoint only accepts POST requests for CSV uploads."}
