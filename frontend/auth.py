@@ -32,7 +32,16 @@
 import msal
 import streamlit as st
 from msal import ConfidentialClientApplication
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+
+# Lấy giá trị từ biến môi trường
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+TENANT_ID = os.getenv("TENANT_ID")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
 
 
 app = ConfidentialClientApplication(

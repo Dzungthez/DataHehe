@@ -9,3 +9,4 @@ pandas
 openai
 azure-identity
 azure-mgmt-powerbiembedded
+python-dotenv
